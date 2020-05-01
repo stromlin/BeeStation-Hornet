@@ -13987,7 +13987,7 @@
 /obj/machinery/button/door{
 	id = "datboidetective";
 	name = "Privacy Shutters";
-	pixel_x = 25;
+	pixel_x = 25
 	},
 /turf/open/floor/carpet,
 /area/security/detectives_office)
@@ -14488,14 +14488,6 @@
 /obj/structure/lattice,
 /obj/structure/sign/logo{
 	icon_state = "nanotrasen_sign3";
-	pixel_y = 32
-	},
-/turf/open/space,
-/area/space/nearstation)
-"aGr" = (
-/obj/structure/lattice,
-/obj/structure/sign/logo{
-	icon_state = "nanotrasen_sign4";
 	pixel_y = 32
 	},
 /turf/open/space,
@@ -54820,7 +54812,7 @@
 	dir = 8;
 	freerange = 1;
 	name = "Station Intercom (Telecomms)";
-	pixel_x = 26;
+	pixel_x = 26
 	},
 /turf/open/floor/plasteel,
 /area/hallway/primary/aft)
@@ -59040,6 +59032,18 @@
 	},
 /turf/open/floor/plasteel/white,
 /area/science/xenobiology)
+"mQV" = (
+/obj/structure/lattice,
+/obj/structure/sign/logo{
+	icon_state = "nanotrasen_sign4";
+	pixel_y = 32
+	},
+/obj/structure/sign/logo{
+	icon_state = "nanotrasen_sign3";
+	pixel_y = 32
+	},
+/turf/open/space,
+/area/space/nearstation)
 "mSc" = (
 /obj/machinery/space_heater,
 /turf/open/floor/plating,
@@ -95651,7 +95655,7 @@ aCK
 aDL
 aEH
 aAB
-aGr
+mQV
 aHf
 aHX
 aIW
