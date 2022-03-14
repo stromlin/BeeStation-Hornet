@@ -10,7 +10,7 @@
 	power_coeff = 1
 
 /datum/mutation/human/epilepsy/on_life()
-	if(prob(1 * GET_MUTATION_SYNCHRONIZER(src)) && owner.is_conscious())
+	if(prob(1 * GET_MUTATION_SYNCHRONIZER(src)) && owner.stat == CONSCIOUS)
 		owner.visible_message("<span class='danger'>[owner] starts having a seizure!</span>", "<span class='userdanger'>You have a seizure!</span>")
 		owner.Unconscious(200 * GET_MUTATION_POWER(src))
 		owner.Jitter(1000 * GET_MUTATION_POWER(src))
@@ -58,7 +58,7 @@
 	power_coeff = 1
 
 /datum/mutation/human/cough/on_life()
-	if(prob(5 * GET_MUTATION_SYNCHRONIZER(src)) && owner.is_conscious())
+	if(prob(5 * GET_MUTATION_SYNCHRONIZER(src)) && owner.stat == CONSCIOUS)
 		owner.drop_all_held_items()
 		owner.emote("cough")
 		if(GET_MUTATION_POWER(src) > 1)
@@ -74,7 +74,7 @@
 	text_lose_indication = "<span class='notice'>The screaming in your mind fades.</span>"
 
 /datum/mutation/human/paranoia/on_life()
-	if(prob(5) && owner.is_conscious())
+	if(prob(5) && owner.stat == CONSCIOUS)
 		owner.emote("scream")
 		if(prob(25))
 			owner.hallucination += 20
@@ -131,7 +131,7 @@
 	synchronizer_coeff = 1
 
 /datum/mutation/human/tourettes/on_life()
-	if(prob(10 * GET_MUTATION_SYNCHRONIZER(src)) && owner.is_conscious() && !owner.IsStun())
+	if(prob(10 * GET_MUTATION_SYNCHRONIZER(src)) && owner.stat == CONSCIOUS && !owner.IsStun())
 		owner.Stun(20)
 		switch(rand(1, 3))
 			if(1)
@@ -175,11 +175,11 @@
 /datum/mutation/human/race/on_acquiring(mob/living/carbon/human/owner)
 	if(..())
 		return
-	. = owner.monkeyize(TR_KEEPITEMS | TR_KEEPIMPLANTS | TR_KEEPORGANS | TR_KEEPDAMAGE | TR_KEEPVIRUS | TR_KEEPSE)
+	. = owner.monkeyize(TR_KEEPITEMS | TR_KEEPIMPLANTS | TR_KEEPORGANS | TR_KEEPDAMAGE | TR_KEEPVIRUS | TR_KEEPSE | TR_KEEPAI)
 
 /datum/mutation/human/race/on_losing(mob/living/carbon/monkey/owner)
 	if(owner && istype(owner) && owner.stat != DEAD && (owner.dna.mutations.Remove(src)))
-		. = owner.humanize(TR_KEEPITEMS | TR_KEEPIMPLANTS | TR_KEEPORGANS | TR_KEEPDAMAGE | TR_KEEPVIRUS | TR_KEEPSE)
+		. = owner.humanize(TR_KEEPITEMS | TR_KEEPIMPLANTS | TR_KEEPORGANS | TR_KEEPDAMAGE | TR_KEEPVIRUS | TR_KEEPSE | TR_KEEPAI)
 
 /datum/mutation/human/glow
 	name = "Glowy"
@@ -204,7 +204,7 @@
 	if(!glowth)
 		return
 	var/power = GET_MUTATION_POWER(src)
-	glowth.set_light(range * power, glow * power, "#[dna.features["mcolor"]]")
+	glowth.set_light_range_power_color(range * power, glow * power, "#[dna.features["mcolor"]]")
 
 /datum/mutation/human/glow/on_losing(mob/living/carbon/human/owner)
 	. = ..()
@@ -375,3 +375,71 @@
 			owner.SetStun(owner.AmountStun()*2)
 			owner.visible_message("<span class='danger'>[owner] tries to stand up, but trips!</span>", "<span class='userdanger'>You trip over your own feet!</span>")
 			stun_cooldown = world.time + 300
+
+/datum/mutation/human/strongwings
+	name = "Strengthened Wings"
+	desc = "Subject's wing muscle volume rapidly increases."
+	quality = POSITIVE
+	difficulty = 12
+	instability = 15
+	species_allowed = list(SPECIES_APID, SPECIES_MOTH)
+
+/datum/mutation/human/strongwings/on_acquiring()
+	if(..())
+		return
+	var/obj/item/organ/wings/wings = locate(/obj/item/organ/wings) in owner.internal_organs
+	if(!wings)
+		to_chat(owner, "<span class='warning'>You don't have wings to strengthen!</span>")
+		return
+	if(istype(wings, /obj/item/organ/wings/moth))
+		var/obj/item/organ/wings/moth/moth_wings = wings
+		moth_wings.flight_level += 1
+		moth_wings.Refresh(owner)
+	else if(istype(wings, /obj/item/organ/wings/bee))
+		var/obj/item/organ/wings/bee/bee_wings = wings
+		bee_wings.jumpdist += (6 * GET_MUTATION_POWER(src)) - 3
+	else
+		to_chat(owner, "<span class='warning'>Those wings are incompatible with the mutation!</span>")
+		return
+	to_chat(owner, "<span class='notice'>Your wings feel stronger.</span>")
+
+/datum/mutation/human/strongwings/on_losing()
+	if(..())
+		return
+	var/obj/item/organ/wings/wings = locate(/obj/item/organ/wings) in owner.internal_organs
+	if(!wings)
+		return
+	if(istype(wings, /obj/item/organ/wings/moth))
+		var/obj/item/organ/wings/moth/moth_wings = wings
+		moth_wings.flight_level -= 1
+		moth_wings.Refresh(owner)
+		to_chat(owner, "<span class='warning'>Your wings feel weak.</span>")
+	else if(istype(wings, /obj/item/organ/wings/bee))
+		var/obj/item/organ/wings/bee/bee_wings = wings
+		bee_wings.jumpdist -= (6 * GET_MUTATION_POWER(src)) - 3
+		to_chat(owner, "<span class='warning'>Your wings feel weak.</span>")
+
+/datum/mutation/human/catclaws
+	name = "Cat Claws"
+	desc = "Subject's hands grow sharpened claws."
+	quality = POSITIVE
+	difficulty = 12
+	instability = 25
+	species_allowed = list(SPECIES_FELINID)
+	var/added_damage = 6
+
+/datum/mutation/human/catclaws/on_acquiring()
+	if(..())
+		return
+	added_damage = min(17, 6 * GET_MUTATION_POWER(src) + owner.dna.species.punchdamage)
+	owner.dna.species.punchdamage += added_damage
+	to_chat(owner, "<span class='notice'>Claws extend from your fingertips.</span>")
+	owner.dna.species.attack_verb = "slash"
+
+/datum/mutation/human/catclaws/on_losing()
+	if(..())
+		return
+	owner.dna.species.punchdamage -= added_damage
+	to_chat(owner, "<span class='warning'> Your claws retract into your hand.</span>")
+	owner.dna.species.attack_verb = initial(owner.dna.species.attack_verb)
+

@@ -80,7 +80,7 @@
 	"<span class='warning'><u>If you do not have the regular drone laws, follow your laws to the best of your ability.</u></span>"
 	chat_color = "#8AB48C"
 
-/mob/living/simple_animal/drone/Initialize()
+/mob/living/simple_animal/drone/Initialize(mapload)
 	. = ..()
 	GLOB.drones_list += src
 	access_card = new /obj/item/card/id(src)
@@ -210,7 +210,7 @@
 
 
 /mob/living/simple_animal/drone/proc/triggerAlarm(class, area/home, cameras, obj/source)
-	if(source.z != z)
+	if(source.get_virtual_z_level() != get_virtual_z_level())
 		return
 	if(stat == DEAD)
 		return

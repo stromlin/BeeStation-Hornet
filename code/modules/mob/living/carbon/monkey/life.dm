@@ -1,32 +1,4 @@
-
-
 /mob/living/carbon/monkey
-
-
-/mob/living/carbon/monkey/Life()
-	set invisibility = 0
-
-	if (notransform)
-		return
-
-	if(..() && !IsInStasis())
-
-		if(!client)
-			if(is_conscious())
-				if(on_fire || buckled || restrained())
-					if(!resisting && prob(MONKEY_RESIST_PROB))
-						resisting = TRUE
-						walk_to(src,0)
-						resist()
-				else if(resisting)
-					resisting = FALSE
-				else if((mode == MONKEY_IDLE && !pickupTarget && !prob(MONKEY_SHENANIGAN_PROB)) || !handle_combat())
-					if(prob(25) && (mobility_flags & MOBILITY_MOVE) && isturf(loc) && !pulledby)
-						step(src, pick(GLOB.cardinals))
-					else if(prob(1))
-						INVOKE_ASYNC(src, /mob.proc/emote, pick("scratch","jump","roll","tail"))
-			else
-				walk_to(src,0)
 
 /mob/living/carbon/monkey/handle_mutations_and_radiation()
 	if(radiation)
@@ -85,9 +57,9 @@
 		adjust_bodytemperature(natural_bodytemperature_stabilization())
 
 	if(!on_fire) //If you're on fire, you do not heat up or cool down based on surrounding gases
-		if(loc_temp < bodytemperature)
+		if(loc_temp < bodytemperature && (!head?.min_cold_protection_temperature || head.min_cold_protection_temperature > loc_temp))
 			adjust_bodytemperature(max((loc_temp - bodytemperature) / BODYTEMP_COLD_DIVISOR, BODYTEMP_COOLING_MAX))
-		else
+		else if(!head?.max_heat_protection_temperature || head.max_heat_protection_temperature < loc_temp)
 			adjust_bodytemperature(min((loc_temp - bodytemperature) / BODYTEMP_HEAT_DIVISOR, BODYTEMP_HEATING_MAX))
 
 
@@ -144,6 +116,13 @@
 
 	return
 
+/mob/living/carbon/monkey/calculate_affecting_pressure(pressure)
+	if (head && isclothing(head))
+		var/obj/item/clothing/CH = head
+		if (CH.clothing_flags & STOPSPRESSUREDAMAGE)
+			return ONE_ATMOSPHERE
+	return pressure
+
 /mob/living/carbon/monkey/handle_random_events()
 	if (prob(1) && prob(2))
 		emote("scratch")
@@ -161,10 +140,10 @@
 	//the fire tries to damage the exposed clothes and items
 	var/list/burning_items = list()
 	//HEAD//
-	var/list/obscured = check_obscured_slots(TRUE)
-	if(wear_mask && !(ITEM_SLOT_MASK in obscured))
+	var/obscured = check_obscured_slots(TRUE)
+	if(wear_mask && !(obscured & ITEM_SLOT_MASK))
 		burning_items += wear_mask
-	if(wear_neck && !(ITEM_SLOT_NECK in obscured))
+	if(wear_neck && !(obscured & ITEM_SLOT_NECK))
 		burning_items += wear_neck
 	if(head)
 		burning_items += head
@@ -172,9 +151,9 @@
 	if(back)
 		burning_items += back
 
-	for(var/X in burning_items)
-		var/obj/item/I = X
+	for(var/obj/item/I as() in burning_items)
 		I.fire_act((fire_stacks * 50)) //damage taken is reduced to 2% of this value by fire_act()
 
-	adjust_bodytemperature(BODYTEMP_HEATING_MAX)
-	SEND_SIGNAL(src, COMSIG_ADD_MOOD_EVENT, "on_fire", /datum/mood_event/on_fire)
+	if(!head?.max_heat_protection_temperature || head.max_heat_protection_temperature < FIRE_IMMUNITY_MAX_TEMP_PROTECT)
+		adjust_bodytemperature(BODYTEMP_HEATING_MAX)
+		SEND_SIGNAL(src, COMSIG_ADD_MOOD_EVENT, "on_fire", /datum/mood_event/on_fire)

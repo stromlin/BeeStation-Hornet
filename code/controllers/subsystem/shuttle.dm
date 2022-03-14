@@ -28,6 +28,7 @@ SUBSYSTEM_DEF(shuttle)
 	var/emergencyNoRecall = FALSE
 	var/adminEmergencyNoRecall = FALSE
 	var/list/hostileEnvironments = list() //Things blocking escape shuttle from leaving
+	var/hostileEnvTrackPlayed = FALSE
 	var/list/tradeBlockade = list() //Things blocking cargo from leaving.
 	var/supplyBlocked = FALSE
 
@@ -149,7 +150,7 @@ SUBSYSTEM_DEF(shuttle)
 		message_admins(msg)
 		log_game("[msg] Alive: [alive], Roundstart: [total], Threshold: [threshold]")
 		emergencyNoRecall = TRUE
-		priority_announce("Catastrophic casualties detected: crisis shuttle protocols activated - jamming recall signals across all frequencies.")
+		priority_announce("Catastrophic casualties detected: crisis shuttle protocols activated - jamming recall signals across all frequencies.", sound = SSstation.announcer.get_rand_alert_sound())
 		if(emergency.timeLeft(1) > emergencyCallTime * 0.4)
 			emergency.request(null, set_coefficient = 0.4)
 
@@ -172,31 +173,26 @@ SUBSYSTEM_DEF(shuttle)
 			return S
 	WARNING("couldn't find dock with id: [id]")
 
+/// Check if we can call the evac shuttle.
+/// Returns TRUE if we can. Otherwise, returns a string detailing the problem.
 /datum/controller/subsystem/shuttle/proc/canEvac(mob/user)
 	var/srd = CONFIG_GET(number/shuttle_refuel_delay)
 	if(world.time - SSticker.round_start_time < srd)
-		to_chat(user, "<span class='alert'>The emergency shuttle is refueling. Please wait [DisplayTimeText(srd - (world.time - SSticker.round_start_time))] before trying again.</span>")
-		return FALSE
+		return "The emergency shuttle is refueling. Please wait [DisplayTimeText(srd - (world.time - SSticker.round_start_time))] before attempting to call."
 
 	switch(emergency.mode)
 		if(SHUTTLE_RECALL)
-			to_chat(user, "<span class='alert'>The emergency shuttle may not be called while returning to CentCom.</span>")
-			return FALSE
+			return "The emergency shuttle may not be called while returning to CentCom."
 		if(SHUTTLE_CALL)
-			to_chat(user, "<span class='alert'>The emergency shuttle is already on its way.</span>")
-			return FALSE
+			return "The emergency shuttle is already on its way."
 		if(SHUTTLE_DOCKED)
-			to_chat(user, "<span class='alert'>The emergency shuttle is already here.</span>")
-			return FALSE
+			return "The emergency shuttle is already here."
 		if(SHUTTLE_IGNITING)
-			to_chat(user, "<span class='alert'>The emergency shuttle is firing its engines to leave.</span>")
-			return FALSE
+			return "The emergency shuttle is firing its engines to leave."
 		if(SHUTTLE_ESCAPE)
-			to_chat(user, "<span class='alert'>The emergency shuttle is moving away to a safe distance.</span>")
-			return FALSE
+			return "The emergency shuttle is moving away to a safe distance."
 		if(SHUTTLE_STRANDED)
-			to_chat(user, "<span class='alert'>The emergency shuttle has been disabled by CentCom.</span>")
-			return FALSE
+			return "The emergency shuttle has been disabled by CentCom."
 
 	return TRUE
 
@@ -214,7 +210,9 @@ SUBSYSTEM_DEF(shuttle)
 			Good luck.")
 		emergency = backup_shuttle
 
-	if(!canEvac(user))
+	var/can_evac_or_fail_reason = SSshuttle.canEvac(user)
+	if(can_evac_or_fail_reason != TRUE)
+		to_chat(user, "<span class='alert'>[can_evac_or_fail_reason]</span>")
 		return
 
 	call_reason = trim(html_encode(call_reason))
@@ -374,6 +372,10 @@ SUBSYSTEM_DEF(shuttle)
 		priority_announce("Hostile environment detected. \
 			Departure has been postponed indefinitely pending \
 			conflict resolution.", null, 'sound/misc/notice1.ogg', "Priority")
+		for(var/i in hostileEnvironments)
+			if(istype(i, /mob/living/carbon/alien/humanoid/royal/queen) && !hostileEnvTrackPlayed)
+				play_soundtrack_music(/datum/soundtrack_song/bee/mind_crawler, only_station = TRUE)
+				hostileEnvTrackPlayed = TRUE
 	if(!emergencyNoEscape && (emergency.mode == SHUTTLE_STRANDED))
 		emergency.mode = SHUTTLE_DOCKED
 		emergency.setTimer(emergencyDockTime)
@@ -508,6 +510,7 @@ SUBSYSTEM_DEF(shuttle)
 	return new_transit_dock
 
 /datum/controller/subsystem/shuttle/Recover()
+	initialized = SSshuttle.initialized
 	if (istype(SSshuttle.mobile))
 		mobile = SSshuttle.mobile
 	if (istype(SSshuttle.stationary))
@@ -637,7 +640,7 @@ SUBSYSTEM_DEF(shuttle)
 	hidden_shuttle_turf_images += add_images
 
 	for(var/V in GLOB.navigation_computers)
-		var/obj/machinery/computer/camera_advanced/shuttle_docker/C = V
+		var/obj/machinery/computer/shuttle_flight/C = V
 		C.update_hidden_docking_ports(remove_images, add_images)
 
 	QDEL_LIST(remove_images)
@@ -698,6 +701,8 @@ SUBSYSTEM_DEF(shuttle)
 	preview_shuttle.mode = mode
 
 	preview_shuttle.register()
+
+	preview_shuttle.reset_air()
 
 	// TODO indicate to the user that success happened, rather than just
 	// blanking the modification tab
@@ -761,6 +766,7 @@ SUBSYSTEM_DEF(shuttle)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
 		ui = new(user, src, "ShuttleManipulator")
+		ui.set_autoupdate(TRUE)
 		ui.open()
 
 

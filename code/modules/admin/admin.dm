@@ -42,6 +42,12 @@
 
 	if(M.client)
 		body += "<br><br><b>First Seen:</b> [M.client.player_join_date]<br><b>Byond account registered on:</b> [M.client.account_join_date]"
+
+		if(M.client?.tgui_panel)
+			body += M.client.tgui_panel.show_notices() //The datum holds a reference to the client already, no need to pass it.
+		else //This should never happen in practice.
+			body += "<br><b>Telemetry Status:</b> <span class='bad'>USER CHAT NOT LOADED, CALL A CODER MAYBE?</span>"
+
 		body += "<br><br><b>CentCom Galactic Ban DB: </b> "
 		if(CONFIG_GET(string/centcom_ban_db))
 			body += "<a href='?_src_=holder;[HrefToken()];centcomlookup=[M.client.ckey]'>Search</a>"
@@ -841,20 +847,26 @@
 	for(var/i in GLOB.silicon_mobs)
 		var/mob/living/silicon/S = i
 		ai_number++
+		var/message = ""
 		if(isAI(S))
-			to_chat(usr, "<b>AI [key_name(S, usr)]'s laws:</b>")
+			message += "<b>AI [key_name(S, usr)]'s laws:</b>"
 		else if(iscyborg(S))
 			var/mob/living/silicon/robot/R = S
-			to_chat(usr, "<b>CYBORG [key_name(S, usr)] [R.connected_ai?"(Slaved to: [key_name(R.connected_ai)])":"(Independent)"]: laws:</b>")
+			message += "<b>CYBORG [key_name(S, usr)] [R.connected_ai?"(Slaved to: [key_name(R.connected_ai)])":"(Independent)"]: laws:</b>"
 		else if (ispAI(S))
-			to_chat(usr, "<b>pAI [key_name(S, usr)]'s laws:</b>")
+			message += "<b>pAI [key_name(S, usr)]'s laws:</b>"
 		else
-			to_chat(usr, "<b>SOMETHING SILICON [key_name(S, usr)]'s laws:</b>")
+			message += "<b>SOMETHING SILICON [key_name(S, usr)]'s laws:</b>"
+
+		message += "<br>"
 
 		if (S.laws == null)
-			to_chat(usr, "[key_name(S, usr)]'s laws are null?? Contact a coder.")
+			message += "[key_name(S, usr)]'s laws are null?? Contact a coder."
 		else
-			S.laws.show_laws(usr)
+			message += jointext(S.laws.get_law_list(include_zeroth = TRUE), "<br>")
+
+		to_chat(usr, message)
+	
 	if(!ai_number)
 		to_chat(usr, "<b>No AIs located</b>" )
 

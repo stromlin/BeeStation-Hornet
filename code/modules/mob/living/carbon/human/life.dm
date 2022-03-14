@@ -44,39 +44,6 @@
 			// Tissues die without blood circulation
 			adjustBruteLoss(2)
 
-		if(stat != DEAD)
-			//Handle hygiene
-			if(HAS_TRAIT(src, TRAIT_ALWAYS_CLEAN))
-				set_hygiene(HYGIENE_LEVEL_CLEAN)
-
-			else
-				var/hygiene_loss = -HYGIENE_FACTOR * 0.25 //Small loss per life
-
-				//If you're covered in blood, you'll start smelling like shit faster.
-				var/obj/item/head = get_item_by_slot(ITEM_SLOT_HEAD)
-				if(head && HAS_BLOOD_DNA(head))
-					hygiene_loss -= 1 * HYGIENE_FACTOR
-
-				var/obj/item/mask = get_item_by_slot(ITEM_SLOT_HEAD)
-				if(mask && HAS_BLOOD_DNA(mask))
-					hygiene_loss -= 1 * HYGIENE_FACTOR
-
-				var/obj/item/uniform = get_item_by_slot(ITEM_SLOT_ICLOTHING)
-				if(uniform && HAS_BLOOD_DNA(uniform))
-					hygiene_loss -= 4 * HYGIENE_FACTOR
-
-				var/obj/item/suit = get_item_by_slot(ITEM_SLOT_OCLOTHING)
-				if(suit && HAS_BLOOD_DNA(suit))
-					hygiene_loss -= 3 * HYGIENE_FACTOR
-
-				var/obj/item/feet = get_item_by_slot(ITEM_SLOT_FEET)
-				if(feet && HAS_BLOOD_DNA(feet))
-					hygiene_loss -= 0.5 * HYGIENE_FACTOR
-
-				adjust_hygiene(hygiene_loss)
-
-		if(InCritical())
-			softcrit_damage()
 		dna.species.spec_life(src) // for mutantraces
 
 	//Update our name based on whether our face is obscured/disfigured
@@ -87,27 +54,35 @@
 
 
 /mob/living/carbon/human/calculate_affecting_pressure(pressure)
-	if (wear_suit && head && isclothing(wear_suit) && isclothing(head))
-		var/obj/item/clothing/CS = wear_suit
-		var/obj/item/clothing/CH = head
-		if (CS.clothing_flags & CH.clothing_flags & STOPSPRESSUREDAMAGE)
-			return ONE_ATMOSPHERE
+	var/chest_covered = FALSE
+	var/head_covered = FALSE
+	for(var/obj/item/clothing/equipped in get_equipped_items())
+		if((equipped.body_parts_covered & CHEST) && (equipped.clothing_flags & STOPSPRESSUREDAMAGE))
+			chest_covered = TRUE
+		if((equipped.body_parts_covered & HEAD) && (equipped.clothing_flags & STOPSPRESSUREDAMAGE))
+			head_covered = TRUE
+
+	if(chest_covered && head_covered)
+		return ONE_ATMOSPHERE
 	return pressure
 
 
 /mob/living/carbon/human/handle_traits()
+	if (getOrganLoss(ORGAN_SLOT_BRAIN) >= 60)
+		SEND_SIGNAL(src, COMSIG_ADD_MOOD_EVENT, "brain_damage", /datum/mood_event/brain_damage)
+	else
+		SEND_SIGNAL(src, COMSIG_CLEAR_MOOD_EVENT, "brain_damage")
+
 	if(eye_blind)			//blindness, heals slowly over time
 		if(HAS_TRAIT_FROM(src, TRAIT_BLIND, EYES_COVERED)) //covering your eyes heals blurry eyes faster
 			adjust_blindness(-3)
 		else
 			adjust_blindness(-1)
-	else if(eye_blurry)			//blurry eyes heal slowly
+		//If you have blindness from a trait, heal blurryness too, otherwise return and ignore that.
+		if(!(HAS_TRAIT(src, TRAIT_BLIND)))
+			return
+	if(eye_blurry)			//blurry eyes heal slowly
 		adjust_blurriness(-1)
-
-	if (getOrganLoss(ORGAN_SLOT_BRAIN) >= 60)
-		SEND_SIGNAL(src, COMSIG_ADD_MOOD_EVENT, "brain_damage", /datum/mood_event/brain_damage)
-	else
-		SEND_SIGNAL(src, COMSIG_CLEAR_MOOD_EVENT, "brain_damage")
 
 /mob/living/carbon/human/handle_mutations_and_radiation()
 	if(!dna || !dna.species.handle_mutations_and_radiation(src))

@@ -263,9 +263,8 @@
 			A.copy_to(new_mob, icon_updates=0)
 
 			var/mob/living/carbon/human/H = new_mob
-			H.update_body()
 			H.update_hair()
-			H.update_body_parts()
+			H.update_body_parts(TRUE)
 			H.dna.update_dna_identity()
 
 	if(!new_mob)
@@ -389,18 +388,17 @@
 	var/locker_suck = TRUE
 
 
-/obj/item/projectile/magic/locker/prehit(atom/A)
+/obj/item/projectile/magic/locker/prehit_pierce(atom/A)
+	. = ..()
 	if(isliving(A) && locker_suck)
 		var/mob/living/M = A
-		if(M.anti_magic_check())
+		if(M.anti_magic_check())			// no this doesn't check if ..() returned to phase through do I care no it's magic ain't gotta explain shit
 			M.visible_message("<span class='warning'>[src] vanishes on contact with [A]!</span>")
-			qdel(src)
-			return
+			return PROJECTILE_DELETE_WITHOUT_HITTING
 		if(M.incorporeal_move || M.mob_size > MOB_SIZE_HUMAN || LAZYLEN(contents)>=5)
-			return ..()
+			return
 		M.forceMove(src)
-		return FALSE
-	return ..()
+		return PROJECTILE_PIERCE_PHASE
 
 /obj/item/projectile/magic/locker/on_hit(target)
 	if(created)
@@ -427,7 +425,7 @@
 	var/magic_icon = "cursed"
 	var/weakened_icon = "decursed"
 
-/obj/structure/closet/decay/Initialize()
+/obj/structure/closet/decay/Initialize(mapload)
 	. = ..()
 	addtimer(CALLBACK(src, .proc/locker_magic_timer), 5)
 
@@ -633,6 +631,11 @@
 	var/chain
 	var/mob/living/caster
 
+/obj/item/projectile/magic/aoe/lightning/New(loc, spell_level)
+	. = ..()
+	tesla_power += 5000 * spell_level
+	tesla_range += 2 * spell_level
+
 /obj/item/projectile/magic/aoe/lightning/fire(setAngle)
 	if(caster)
 		chain = caster.Beam(src, icon_state = "lightning[rand(1, 12)]", time = INFINITY, maxdistance = INFINITY)
@@ -665,6 +668,13 @@
 	var/exp_light = 2
 	var/exp_flash = 3
 	var/exp_fire = 2
+
+/obj/item/projectile/magic/aoe/fireball/New(loc, spell_level)
+	. = ..()
+	exp_fire += spell_level
+	exp_flash += spell_level
+	exp_light += spell_level
+	exp_heavy = max(spell_level - 2, 0)
 
 /obj/item/projectile/magic/aoe/fireball/on_hit(target)
 	. = ..()

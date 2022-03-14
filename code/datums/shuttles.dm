@@ -22,9 +22,14 @@
 /datum/map_template/shuttle/proc/prerequisites_met()
 	return TRUE
 
-/datum/map_template/shuttle/New()
+/datum/map_template/shuttle/New(path = null, rename = null, cache = FALSE, admin_load = null)
+	if(admin_load)//This data must be populated for the system to not shit itself apparently
+		suffix = admin_load
+		port_id = "custom"
+		can_be_bought = FALSE
 	shuttle_id = "[port_id]_[suffix]"
-	mappath = "[prefix][shuttle_id].dmm"
+	if(!admin_load)
+		mappath = "[prefix][shuttle_id].dmm"
 	. = ..()
 
 /datum/map_template/shuttle/preload_size(path, cache)
@@ -245,11 +250,24 @@
 	description = "The crew must pass through an otherworldy arena to board this shuttle. Expect massive casualties. The source of the Bloody Signal must be tracked down and eliminated to unlock this shuttle."
 	admin_notes = "RIP AND TEAR."
 	credit_cost = 10000
+	/// Whether the arena z-level has been created
+	var/arena_loaded = FALSE
 
 /datum/map_template/shuttle/emergency/arena/prerequisites_met()
 	if(SHUTTLE_UNLOCK_BUBBLEGUM in SSshuttle.shuttle_purchase_requirements_met)
 		return TRUE
 	return FALSE
+
+/datum/map_template/shuttle/emergency/arena/post_load(obj/docking_port/mobile/M)
+	. = ..()
+	if(!arena_loaded)
+		arena_loaded = TRUE
+		var/datum/map_template/arena/arena_template = new()
+		arena_template.load_new_z()
+
+/datum/map_template/arena
+	name = "The Arena"
+	mappath = "_maps/templates/the_arena.dmm"
 
 /datum/map_template/shuttle/emergency/birdboat
 	suffix = "birdboat"
@@ -306,6 +324,13 @@
 	name = "Corg Station Emergency Shuttle"
 	credit_cost = 4000
 	description = "A smaller shuttle with area for cargo, medical and security personnel."
+
+/datum/map_template/shuttle/emergency/fland
+	suffix = "fland"
+	name = "Flandstation Wide shuttle"
+	description = "It's a fat shuttle for a rather unusual station... huh..."
+	admin_notes = "It's big to spawn, it may or may not collide with the surrounding stuff on other maps that don't have a massive emergency docking area."
+	credit_cost = 8000
 
 /datum/map_template/shuttle/emergency/mini
 	suffix = "mini"
@@ -538,6 +563,24 @@
 	name = "science outpost shuttle"
 	can_be_bought = FALSE
 
+/datum/map_template/shuttle/exploration
+	port_id = "exploration"
+	suffix = "shuttle"
+	name = "exploration shuttle"
+	can_be_bought = FALSE
+
+/datum/map_template/shuttle/exploration/corg
+	suffix = "corg"
+	name = "corg exploration shuttle"
+
+/datum/map_template/shuttle/exploration/delta
+	suffix = "delta"
+	name = "delta exploration shuttle"
+
+/datum/map_template/shuttle/exploration/kilo
+	suffix = "kilo"
+	name = "kilo exploration shuttle"
+
 /datum/map_template/shuttle/labour/delta
 	suffix = "delta"
 	name = "labour shuttle (Delta)"
@@ -641,3 +684,44 @@
 /datum/map_template/shuttle/tram/corg
 	suffix = "corg"
 	name = "corgstation transport shuttle"
+
+//---------cargo_fland.dmm
+/datum/map_template/shuttle/cargo/fland
+	suffix = "fland"
+	name = "supply shuttle (fland)"
+
+//---------labour_fland.dmm
+/datum/map_template/shuttle/cargo/fland
+	suffix = "fland"
+	name = "cargo ferry (Fland)"
+
+//---------mining_fland.dmm
+/datum/map_template/shuttle/mining/fland
+	suffix = "fland"
+	name = "mining shuttle (fland)"
+
+//---------labour_fland.dmm
+/datum/map_template/shuttle/labour/fland
+	suffix = "fland"
+	name = "labour shuttle (Fland)"
+
+//---------arrival_fland.dmm
+/datum/map_template/shuttle/arrival/fland
+	suffix = "fland"
+	name = "arrival shuttle (Fland)"
+
+//---------whiteship_fland.dmm
+/datum/map_template/shuttle/whiteship/fland
+	suffix = "fland"
+	name = "Eden Whiteship"
+
+//---------exploration_fland.dmm
+/datum/map_template/shuttle/exploration/fland
+	suffix = "fland"
+	name = "Fland exploration shuttle"
+
+//---------ferry_fland.dmm
+/datum/map_template/shuttle/ferry/fland
+	suffix = "fland"
+	name = "fland transport ferry"
+	description = "Standard issue CentCom Ferry for the fland station. Includes additional equipment and a recharger."

@@ -80,6 +80,9 @@
 #define LARGE_MOB_LAYER 4.4
 #define ABOVE_ALL_MOB_LAYER 4.5
 
+#define METEOR_SHADOW_LAYER 4.69
+#define METEOR_LAYER 4.7
+
 #define SPACEVINE_LAYER 4.8
 #define SPACEVINE_MOB_LAYER 4.9
 //#define FLY_LAYER 5 //For easy recordkeeping; this is a byond define
@@ -115,8 +118,12 @@
 
 #define RAD_TEXT_LAYER 21
 
-#define ABOVE_LIGHTING_PLANE 16
-#define ABOVE_LIGHTING_LAYER 16
+#define O_LIGHTING_VISUAL_PLANE 16
+#define O_LIGHTING_VISUAL_LAYER 16
+#define O_LIGHTING_VISUAL_RENDER_TARGET "O_LIGHT_VISUAL_PLANE"
+
+#define ABOVE_LIGHTING_PLANE 17
+#define ABOVE_LIGHTING_LAYER 17
 #define ABOVE_LIGHTING_RENDER_TARGET "ABOVE_LIGHTING_PLANE"
 
 #define BYOND_LIGHTING_PLANE 18
@@ -128,6 +135,10 @@
 #define CAMERA_STATIC_RENDER_TARGET "CAMERA_STATIC_PLANE"
 
 #define RUNECHAT_PLANE 20
+
+/// Plane for balloon text (text that fades up)
+#define BALLOON_CHAT_PLANE 20.5
+
 //HUD layer defines
 
 #define FULLSCREEN_PLANE 21
@@ -149,3 +160,6 @@
 #define SPLASHSCREEN_LAYER 24
 #define SPLASHSCREEN_PLANE 24
 #define SPLASHSCREEN_RENDER_TARGET "SPLASHSCREEN_PLANE"
+
+///Plane master controller keys
+#define PLANE_MASTERS_GAME "plane_masters_game"

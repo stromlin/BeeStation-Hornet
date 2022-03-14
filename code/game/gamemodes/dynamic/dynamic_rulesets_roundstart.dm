@@ -11,7 +11,7 @@
 	antag_flag = ROLE_TRAITOR
 	antag_datum = /datum/antagonist/traitor
 	minimum_required_age = 0
-	protected_roles = list("Security Officer", "Warden", "Detective", "Head of Security", "Captain")
+	protected_roles = list("Security Officer", "Warden", "Head of Security", "Captain")
 	restricted_roles = list("Cyborg")
 	required_candidates = 1
 	weight = 5
@@ -49,7 +49,7 @@
 	name = "Blood Brothers"
 	antag_flag = ROLE_BROTHER
 	antag_datum = /datum/antagonist/brother/
-	protected_roles = list("Security Officer", "Warden", "Detective", "Head of Security", "Captain")
+	protected_roles = list("Security Officer", "Warden", "Head of Security", "Captain")
 	restricted_roles = list("Cyborg", "AI")
 	required_candidates = 2
 	weight = 4
@@ -501,7 +501,7 @@
 /datum/dynamic_ruleset/roundstart/devil/pre_execute(population)
 	. = ..()
 	var/num_devils = get_antag_cap(population) * (scaled_times + 1)
-	
+
 	for(var/j = 0, j < num_devils, j++)
 		if (!candidates.len)
 			break
@@ -651,14 +651,7 @@
 
 /datum/dynamic_ruleset/roundstart/clockcult/pre_execute()
 	//Load Reebe
-	var/list/errorList = list()
-	var/list/reebe = SSmapping.LoadGroup(errorList, "Reebe", "map_files/generic", "CityOfCogs.dmm", default_traits=ZTRAITS_REEBE, silent=TRUE)
-	if(errorList.len)
-		message_admins("Reebe failed to load")
-		log_game("Reebe failed to load")
-		return FALSE
-	for(var/datum/parsed_map/map in reebe)
-		map.initTemplateBounds()
+	LoadReebe()
 	//Make cultists
 	var/starter_servants = 4
 	var/number_players = mode.roundstart_pop_ready

@@ -24,7 +24,6 @@
 	circuit = /obj/item/circuitboard/machine/chem_dispenser
 
 
-
 	var/obj/item/stock_parts/cell/cell
 	var/powerefficiency = 0.1
 	var/amount = 30
@@ -84,7 +83,7 @@
 
 	var/list/saved_recipes = list()
 
-/obj/machinery/chem_dispenser/Initialize()
+/obj/machinery/chem_dispenser/Initialize(mapload)
 	. = ..()
 	dispensable_reagents = sortList(dispensable_reagents, /proc/cmp_reagents_asc)
 	if(emagged_reagents)
@@ -107,8 +106,8 @@
 		"Recharging <b>[recharge_amount]</b> power units per interval.\n"+\
 		"Power efficiency increased by <b>[round((powerefficiency*1000)-100, 1)]%</b>.</span>"
 
-/obj/machinery/chem_dispenser/process()
-	if (recharge_counter >= 4)
+/obj/machinery/chem_dispenser/process(delta_time)
+	if (recharge_counter >= 8)
 		if(!is_operational())
 			return
 		var/usedpower = cell.give(recharge_amount)
@@ -116,7 +115,7 @@
 			use_power(250*recharge_amount)
 		recharge_counter = 0
 		return
-	recharge_counter++
+	recharge_counter += delta_time
 
 /obj/machinery/chem_dispenser/proc/display_beaker()
 	var/mutable_appearance/b_o = beaker_overlay || mutable_appearance(icon, "disp_beaker")
@@ -182,6 +181,9 @@
 		ui = new(user, src, "ChemDispenser")
 		if(user.hallucinating())
 			ui.set_autoupdate(FALSE) //to not ruin the immersion by constantly changing the fake chemicals
+			//Seems like a pretty bad way to do it, but I think a better one would deserve a wider refactor including at least sleeper
+		else
+			ui.set_autoupdate(TRUE) // Cell charge
 		ui.open()
 
 /obj/machinery/chem_dispenser/ui_data(mob/user)
@@ -226,11 +228,21 @@
 	return data
 
 /obj/machinery/chem_dispenser/ui_act(action, params)
-	if(..())
+	. = ..()
+	if(.) // Propagation only used by debug machine, but eh
 		return
+
+	switch(action)
+		if("eject")
+			replace_beaker(usr)
+			. = TRUE
+
+	if(!is_operational())
+		return
+
 	switch(action)
 		if("amount")
-			if(!is_operational() || QDELETED(beaker))
+			if(QDELETED(beaker))
 				return
 			var/target = text2num(params["target"])
 			if(target in beaker.possible_transfer_amounts)
@@ -238,7 +250,7 @@
 				work_animation()
 				. = TRUE
 		if("dispense")
-			if(!is_operational() || QDELETED(cell))
+			if(QDELETED(cell))
 				return
 			var/reagent_name = params["reagent"]
 			if(!recording_recipe)
@@ -257,18 +269,15 @@
 				recording_recipe[reagent_name] += amount
 			. = TRUE
 		if("remove")
-			if(!is_operational() || recording_recipe)
+			if(recording_recipe)
 				return
 			var/amount = text2num(params["amount"])
 			if(beaker && (amount in beaker.possible_transfer_amounts))
 				beaker.reagents.remove_all(amount)
 				work_animation()
 				. = TRUE
-		if("eject")
-			replace_beaker(usr)
-			. = TRUE
 		if("dispense_recipe")
-			if(!is_operational() || QDELETED(cell))
+			if(QDELETED(cell))
 				return
 			var/list/chemicals_to_dispense = saved_recipes[params["recipe"]]
 			if(!LAZYLEN(chemicals_to_dispense))
@@ -294,20 +303,14 @@
 					recording_recipe[key] += dispense_amount
 			. = TRUE
 		if("clear_recipes")
-			if(!is_operational())
-				return
 			var/yesno = alert("Clear all recipes?",, "Yes","No")
 			if(yesno == "Yes")
 				saved_recipes = list()
 			. = TRUE
 		if("record_recipe")
-			if(!is_operational())
-				return
 			recording_recipe = list()
 			. = TRUE
 		if("save_recording")
-			if(!is_operational())
-				return
 			var/name = stripped_input(usr,"Name","What do you want to name this recipe?", "Recipe", MAX_NAME_LEN)
 			if(!usr.canUseTopic(src, !issilicon(usr)))
 				return
@@ -325,8 +328,6 @@
 				recording_recipe = null
 				. = TRUE
 		if("cancel_recording")
-			if(!is_operational())
-				return
 			recording_recipe = null
 			. = TRUE
 
@@ -414,7 +415,7 @@
 	if(istype(user) && user.canUseTopic(src, BE_CLOSE, FALSE, NO_TK))
 		replace_beaker(user)
 
-/obj/machinery/chem_dispenser/drinks/Initialize()
+/obj/machinery/chem_dispenser/drinks/Initialize(mapload)
 	. = ..()
 	AddComponent(/datum/component/simple_rotation, ROTATION_ALTCLICK | ROTATION_CLOCKWISE)
 
@@ -471,6 +472,7 @@
 		/datum/reagent/consumable/pwr_game,
 		/datum/reagent/consumable/shamblers,
 		/datum/reagent/consumable/sugar,
+		/datum/reagent/consumable/pineapplejuice,
 		/datum/reagent/consumable/orangejuice,
 		/datum/reagent/consumable/grenadine,
 		/datum/reagent/consumable/limejuice,
@@ -492,7 +494,7 @@
 	flags_1 = NODECONSTRUCT_1
 	circuit = /obj/item/circuitboard/machine/chem_dispenser/drinks/fullupgrade
 
-/obj/machinery/chem_dispenser/drinks/fullupgrade/Initialize()
+/obj/machinery/chem_dispenser/drinks/fullupgrade/Initialize(mapload)
 	. = ..()
 	dispensable_reagents |= emagged_reagents //adds emagged reagents
 
@@ -518,6 +520,7 @@
 		/datum/reagent/consumable/ethanol/hcider,
 		/datum/reagent/consumable/ethanol/creme_de_menthe,
 		/datum/reagent/consumable/ethanol/creme_de_cacao,
+		/datum/reagent/consumable/ethanol/creme_de_coconut,
 		/datum/reagent/consumable/ethanol/triple_sec,
 		/datum/reagent/consumable/ethanol/sake,
 		/datum/reagent/consumable/ethanol/applejack
@@ -537,7 +540,7 @@
 	flags_1 = NODECONSTRUCT_1
 	circuit = /obj/item/circuitboard/machine/chem_dispenser/drinks/beer/fullupgrade
 
-/obj/machinery/chem_dispenser/drinks/beer/fullupgrade/Initialize()
+/obj/machinery/chem_dispenser/drinks/beer/fullupgrade/Initialize(mapload)
 	. = ..()
 	dispensable_reagents |= emagged_reagents //adds emagged reagents
 
@@ -601,7 +604,7 @@
 	flags_1 = NODECONSTRUCT_1
 	circuit = /obj/item/circuitboard/machine/chem_dispenser/fullupgrade
 
-/obj/machinery/chem_dispenser/fullupgrade/Initialize()
+/obj/machinery/chem_dispenser/fullupgrade/Initialize(mapload)
 	. = ..()
 	dispensable_reagents |= emagged_reagents //adds emagged reagents
 

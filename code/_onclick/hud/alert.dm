@@ -308,7 +308,9 @@ or shoot a gun to move around via Newton's 3rd Law of Motion."
 	RegisterSignal(taker, COMSIG_MOVABLE_MOVED, .proc/check_in_range)
 
 /atom/movable/screen/alert/give/proc/check_in_range()
-	SIGNAL_HANDLER_DOES_SLEEP // doesn't actually sleep since the only thing below which can sleep is CheckToolReach() which returns FALSE before coming that far.
+	SIGNAL_HANDLER // doesn't actually sleep since the only thing below which can sleep is CheckToolReach() which returns FALSE before coming that far.
+
+
 	if (!usr.CanReach(giver))
 		to_chat(giver, "<span class='warning'>[taker] moved out of range of you!</span>")
 		to_chat(taker, "<span class='warning'>You moved out of range of [giver]!</span>")
@@ -364,7 +366,7 @@ or shoot a gun to move around via Newton's 3rd Law of Motion."
 	var/angle = 0
 	var/mob/living/simple_animal/hostile/construct/Cviewer = null
 
-/atom/movable/screen/alert/bloodsense/Initialize()
+/atom/movable/screen/alert/bloodsense/Initialize(mapload)
 	. = ..()
 	narnar = new('icons/mob/screen_alert.dmi', "mini_nar")
 	START_PROCESSING(SSprocessing, src)
@@ -418,7 +420,7 @@ or shoot a gun to move around via Newton's 3rd Law of Motion."
 		return
 	var/turf/P = get_turf(blood_target)
 	var/turf/Q = get_turf(owner)
-	if(!P || !Q || (P.z != Q.z)) //The target is on a different Z level, we cannot sense that far.
+	if(!P || !Q || (P.get_virtual_z_level()!= Q.get_virtual_z_level())) //The target is on a different Z level, we cannot sense that far.
 		icon_state = "runed_sense2"
 		desc = "You can no longer sense your target's presence."
 		return
@@ -468,7 +470,7 @@ or shoot a gun to move around via Newton's 3rd Law of Motion."
 	icon_state = "clockinfo"
 	alerttooltipstyle = "clockcult"
 
-/atom/movable/screen/alert/clockwork/clocksense/Initialize()
+/atom/movable/screen/alert/clockwork/clocksense/Initialize(mapload)
 	. = ..()
 	START_PROCESSING(SSprocessing, src)
 
@@ -615,18 +617,18 @@ so as to remain in compliance with the most up-to-date laws."
 		return
 	if(!target)
 		return
-	var/mob/dead/observer/G = usr
-	if(!istype(G))
+	var/mob/dead/observer/ghost_owner = usr
+	if(!istype(ghost_owner))
 		return
 	switch(action)
 		if(NOTIFY_ATTACK)
-			target.attack_ghost(G)
+			target.attack_ghost(ghost_owner)
 		if(NOTIFY_JUMP)
 			var/turf/T = get_turf(target)
 			if(T && isturf(T))
-				G.forceMove(T)
+				ghost_owner.abstract_move(T)
 		if(NOTIFY_ORBIT)
-			G.ManualFollow(target)
+			ghost_owner.ManualFollow(target)
 
 //OBJECT-BASED
 

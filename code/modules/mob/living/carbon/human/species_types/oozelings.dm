@@ -1,6 +1,7 @@
 /datum/species/oozeling
-	name = "Oozeling"
-	id = "oozeling"
+	name = "\improper Oozeling"
+	id = SPECIES_OOZELING
+	bodyflag = FLAG_OOZELING
 	default_color = "00FF90"
 	say_mod = "blorbles"
 	species_traits = list(MUTCOLORS,EYECOLOR,HAIR,FACEHAIR)
@@ -16,10 +17,17 @@
 	heatmod = 0.5 // = 1/4x heat damage
 	changesource_flags = MIRROR_BADMIN | WABBAJACK | MIRROR_PRIDE | MIRROR_MAGIC | RACE_SWAP | ERT_SPAWN | SLIME_EXTRACT
 	species_language_holder = /datum/language_holder/oozeling
-	limbs_id = "ooze"
 	swimming_component = /datum/component/swimming/dissolve
 	toxic_food = NONE
 	disliked_food = NONE
+	inert_mutation = ACIDOOZE
+
+	species_chest = /obj/item/bodypart/chest/oozeling
+	species_head = /obj/item/bodypart/head/oozeling
+	species_l_arm = /obj/item/bodypart/l_arm/oozeling
+	species_r_arm = /obj/item/bodypart/r_arm/oozeling
+	species_l_leg = /obj/item/bodypart/l_leg/oozeling
+	species_r_leg = /obj/item/bodypart/r_leg/oozeling
 
 /datum/species/oozeling/random_name(gender,unique,lastname)
 	if(unique)
@@ -81,11 +89,11 @@
 	if(!atmos_sealed)
 		var/datum/gas_mixture/environment = H.loc.return_air()
 		if(environment?.total_moles())
-			if(environment.get_moles(/datum/gas/water_vapor) >= 1)
+			if(environment.get_moles(GAS_H2O) >= 1)
 				H.blood_volume -= 15
 				if(prob(50))
 					to_chat(H, "<span class='danger'>Your ooze melts away rapidly in the water vapor!</span>")
-			if(H.blood_volume <= 672 && environment.get_moles(/datum/gas/plasma) >= 1)
+			if(H.blood_volume <= 672 && environment.get_moles(GAS_PLASMA) >= 1)
 				H.blood_volume += 15
 	if(H.blood_volume < BLOOD_VOLUME_OKAY && prob(5))
 		to_chat(H, "<span class='danger'>You feel drained!</span>")
@@ -151,7 +159,6 @@
 	to_chat(H, "<span class='warning'>...but there is not enough of you to go around! You must attain more blood volume to heal!</span>")
 
 /datum/species/oozeling/handle_chemicals(datum/reagent/chem, mob/living/carbon/human/H)
-	. = ..()
 	if(chem.type == /datum/reagent/water)
 		if(chem.volume > 10)
 			H.reagents.remove_reagent(chem.type, chem.volume - 10)
@@ -159,3 +166,4 @@
 		H.blood_volume -= 25
 		H.reagents.remove_reagent(chem.type, chem.metabolization_rate)
 		return TRUE
+	return ..()

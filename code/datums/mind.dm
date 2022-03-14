@@ -41,7 +41,6 @@
 	var/assigned_role
 	var/special_role
 	var/list/restricted_roles = list()
-	var/list/datum/objective/objectives = list()
 
 	var/list/spell_list = list() // Wizard mode & "Give Spell" badmin button.
 
@@ -88,7 +87,21 @@
 				qdel(i)
 		antag_datums = null
 	QDEL_NULL(language_holder)
+	set_current(null)
 	return ..()
+
+/datum/mind/proc/set_current(mob/new_current)
+	if(new_current && QDELING(new_current))
+		CRASH("Tried to set a mind's current var to a qdeleted mob, what the fuck")
+	if(current)
+		UnregisterSignal(src, COMSIG_PARENT_QDELETING)
+	current = new_current
+	if(current)
+		RegisterSignal(src, COMSIG_PARENT_QDELETING, .proc/clear_current)
+
+/datum/mind/proc/clear_current(datum/source)
+	SIGNAL_HANDLER
+	set_current(null)
 
 /datum/mind/proc/get_language_holder()
 	if(!language_holder)
@@ -108,13 +121,13 @@
 		key = new_character.key
 
 	if(new_character.mind)								//disassociate any mind currently in our new body's mind variable
-		new_character.mind.current = null
+		new_character.mind.set_current(null)
 
 	var/datum/atom_hud/antag/hud_to_transfer = antag_hud//we need this because leave_hud() will clear this list
 	var/mob/living/old_current = current
 	if(current)
 		current.transfer_observers_to(new_character)	//transfer anyone observing the old character to the new one
-	current = new_character								//associate ourself with our new body
+	set_current(new_character)								//associate ourself with our new body
 	new_character.mind = src							//and associate our new body with ourself
 	for(var/a in antag_datums)	//Makes sure all antag datums effects are applied in the new body
 		var/datum/antagonist/A = a
@@ -132,6 +145,8 @@
 	SEND_SIGNAL(src, COMSIG_MIND_TRANSFER_TO, old_current, new_character)
 
 /datum/mind/proc/set_death_time()
+	SIGNAL_HANDLER
+
 	last_death = world.time
 
 /datum/mind/proc/store_memory(new_text)
@@ -281,6 +296,7 @@
 			P = inowhaveapen
 
 	var/obj/item/uplink_loc
+	var/implant = FALSE
 
 	if(traitor_mob.client?.prefs)
 		switch(traitor_mob.client.prefs.uplink_spawn_loc)
@@ -298,16 +314,13 @@
 					uplink_loc = P
 			if(UPLINK_PEN)
 				uplink_loc = P
-				if(!uplink_loc)
-					uplink_loc = PDA
-				if(!uplink_loc)
-					uplink_loc = R
+			if(UPLINK_IMPLANT)
+				implant = TRUE
 
-	if (!uplink_loc)
-		if(!silent)
-			to_chat(traitor_mob, "<span class='boldnotice'>Unfortunately, [employer] wasn't able to get you an Uplink.</span>")
-		. = 0
-	else
+	if(!uplink_loc) // We've looked everywhere, let's just implant you
+		implant = TRUE
+
+	if (!implant)
 		. = uplink_loc
 		var/datum/component/uplink/U = uplink_loc.AddComponent(/datum/component/uplink, traitor_mob.key, TRUE, FALSE, gamemode, telecrystals)
 		if(!U)
@@ -325,6 +338,14 @@
 			uplink_owner.antag_memory += U.unlock_note + "<br>"
 		else
 			traitor_mob.mind.store_memory(U.unlock_note)
+	else
+		var/obj/item/implant/uplink/starting/I = new(traitor_mob)
+		I.implant(traitor_mob, null, silent = TRUE)
+		if(!silent)
+			to_chat(traitor_mob, "<span class='boldnotice'>[employer] has cunningly implanted you with a Syndicate Uplink (although uplink implants cost valuable TC, so you will have slightly less). Simply trigger the uplink to access it.</span>")
+		return I
+
+
 
 //Link a new mobs mind to the creator of said mob. They will join any team they are currently on, and will only switch teams when their creator does.
 
@@ -364,15 +385,14 @@
 	output += memory
 
 
-	var/list/all_objectives = list()
+	var/list/antag_objectives = get_all_antag_objectives()
 	for(var/datum/antagonist/A in antag_datums)
 		output += A.antag_memory
-		all_objectives |= A.objectives
 
-	if(all_objectives.len)
-		output += "<B>Objectives:</B>"
+	if(antag_objectives.len)
+		output += "<br><B>Objectives:</B>"
 		var/obj_count = 1
-		for(var/datum/objective/objective in all_objectives)
+		for(var/datum/objective/objective in antag_objectives)
 			output += "<br><B>Objective #[obj_count++]</B>: [objective.explanation_text]"
 			var/list/datum/mind/other_owners = objective.get_owners() - src
 			if(other_owners.len)
@@ -380,10 +400,14 @@
 				for(var/datum/mind/M in other_owners)
 					output += "<li>Conspirator: [M.name]</li>"
 				output += "</ul>"
+	if(crew_objectives.len)
+		output += "<br><B>Optional Objectives:</B>"
+		for(var/datum/objective/objective as() in crew_objectives)
+			output += "<br>[objective.explanation_text]"
 
 	if(window)
 		recipient << browse(output,"window=memory")
-	else if(all_objectives.len || memory)
+	else if(antag_objectives.len || crew_objectives.len || memory)
 		to_chat(recipient, "<i>[output]</i>")
 
 /datum/mind/Topic(href, href_list)
@@ -534,7 +558,7 @@
 		switch(href_list["common"])
 			if("undress")
 				for(var/obj/item/W in current)
-					current.dropItemToGround(W, TRUE) //The 1 forces all items to drop, since this is an admin undress.
+					current.dropItemToGround(W, TRUE) //The TRUE forces all items to drop, since this is an admin undress.
 			if("takeuplink")
 				take_uplink()
 				memory = null//Remove any memory they may have had.
@@ -564,19 +588,30 @@
 	traitor_panel()
 
 
-/datum/mind/proc/get_all_objectives()
-	var/list/all_objectives = list()
+/datum/mind/proc/get_all_antag_objectives()
+	var/list/antag_objectives = list()
 	for(var/datum/antagonist/A in antag_datums)
-		all_objectives |= A.objectives
-	return all_objectives
+		antag_objectives |= A.objectives
+		var/datum/team/team = A.get_team()
+		if(team)
+			antag_objectives |= team.objectives
+	return antag_objectives
+
+/datum/mind/proc/get_all_objectives()
+	return get_all_antag_objectives() | crew_objectives
 
 /datum/mind/proc/announce_objectives()
 	var/obj_count = 1
-	to_chat(current, "<span class='notice'>Your current objectives:</span>")
-	for(var/objective in get_all_objectives())
-		var/datum/objective/O = objective
-		to_chat(current, "<B>Objective #[obj_count]</B>: [O.explanation_text]")
-		obj_count++
+	var/list/antag_objectives = get_all_antag_objectives()
+	if(antag_objectives.len)
+		to_chat(current, "<span class='notice'>Your current objectives:</span>")
+		for(var/datum/objective/O as() in antag_objectives)
+			to_chat(current, "<B>Objective #[obj_count]</B>: [O.explanation_text]")
+			obj_count++
+	if(crew_objectives.len)
+		to_chat(current, "<span class='notice'>Your optional objectives:</span>")
+		for(var/datum/objective/C as() in crew_objectives)
+			to_chat(current, "[C.explanation_text]")
 
 /datum/mind/proc/find_syndicate_uplink()
 	var/list/L = current.GetAllContents()
@@ -726,7 +761,7 @@
 		SSticker.minds += mind
 	if(!mind.name)
 		mind.name = real_name
-	mind.current = src
+	mind.set_current(src)
 
 /mob/living/carbon/mind_initialize()
 	..()

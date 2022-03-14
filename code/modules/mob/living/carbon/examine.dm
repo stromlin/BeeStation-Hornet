@@ -7,25 +7,27 @@
 	var/t_is = p_are()
 
 	. = list("<span class='info'>*---------*\nThis is [icon2html(src, user)] \a <EM>[src]</EM>!")
-	var/list/obscured = check_obscured_slots()
+	var/obscured = check_obscured_slots()
 
-	if (handcuffed)
-		. += "<span class='warning'>[t_He] [t_is] [icon2html(handcuffed, user)] handcuffed!</span>"
-	if (head)
+	if(handcuffed)
+		. += "<span class='warning'>[t_He] [t_is] handcuffed with [handcuffed]!</span>"
+	if(legcuffed)
+		. += "<span class='warning'>[t_He] [t_is] legcuffed with [legcuffed]!</span>"
+	if(head)
 		. += "[t_He] [t_is] wearing [head.get_examine_string(user)] on [t_his] head. "
-	if(wear_mask && !(ITEM_SLOT_MASK in obscured))
+	if(wear_mask && !(obscured & ITEM_SLOT_MASK))
 		. += "[t_He] [t_is] wearing [wear_mask.get_examine_string(user)] on [t_his] face."
-	if(wear_neck && !(ITEM_SLOT_NECK in obscured))
+	if(wear_neck && !(obscured & ITEM_SLOT_NECK))
 		. += "[t_He] [t_is] wearing [wear_neck.get_examine_string(user)] around [t_his] neck."
 
 	for(var/obj/item/I in held_items)
 		if(!(I.item_flags & ABSTRACT))
 			. += "[t_He] [t_is] holding [I.get_examine_string(user)] in [t_his] [get_held_index_name(get_held_index_of_item(I))]."
 
-	if (back)
+	if(back)
 		. += "[t_He] [t_has] [back.get_examine_string(user)] on [t_his] back."
 	var/appears_dead = 0
-	if (stat == DEAD)
+	if(stat == DEAD)
 		appears_dead = 1
 		if(getorgan(/obj/item/organ/brain))
 			. += "<span class='deadsay'>[t_He] [t_is] limp and unresponsive, with no signs of life.</span>"
@@ -35,16 +37,15 @@
 	var/list/msg = list("<span class='warning'>")
 	var/list/missing = list(BODY_ZONE_HEAD, BODY_ZONE_CHEST, BODY_ZONE_R_ARM, BODY_ZONE_L_ARM, BODY_ZONE_R_LEG, BODY_ZONE_L_LEG)
 	var/list/disabled = list()
-	for(var/X in bodyparts)
-		var/obj/item/bodypart/BP = X
+	for(var/obj/item/bodypart/BP as() in bodyparts)
 		if(BP.disabled)
 			disabled += BP
 		missing -= BP.body_zone
 		for(var/obj/item/I in BP.embedded_objects)
 			if(I.isEmbedHarmless())
-				msg += "<B>[t_He] [t_has] \a [icon2html(I, user)] [I] stuck to [t_his] [BP.name]!</B>\n"
+				msg += "<B>[t_He] [t_has] [icon2html(I, user)] \a [I] stuck to [t_his] [BP.name]!</B>\n"
 			else
-				msg += "<B>[t_He] [t_has] \a [icon2html(I, user)] [I] embedded in [t_his] [BP.name]!</B>\n"
+				msg += "<B>[t_He] [t_has] [icon2html(I, user)] \a [I] embedded in [t_his] [BP.name]!</B>\n"
 
 	for(var/X in disabled)
 		var/obj/item/bodypart/BP = X
@@ -85,7 +86,7 @@
 		if(temp)
 			if(temp < 25)
 				msg += "[t_He] [t_is] slightly deformed.\n"
-			else if (temp < 50)
+			else if(temp < 50)
 				msg += "[t_He] [t_is] <b>moderately</b> deformed!\n"
 			else
 				msg += "<b>[t_He] [t_is] severely deformed!</b>\n"
@@ -111,11 +112,8 @@
 		else if(InCritical())
 			. += "[t_His] breathing is shallow and labored."
 
-		if(digitalcamo)
-			. += "[t_He] [t_is] moving [t_his] body in an unnatural and blatantly unsimian manner."
-
 	var/trait_exam = common_trait_examine()
-	if (!isnull(trait_exam))
+	if(!isnull(trait_exam))
 		. += trait_exam
 
 	var/datum/component/mood/mood = src.GetComponent(/datum/component/mood)
